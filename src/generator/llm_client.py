@@ -11,7 +11,7 @@ groq_key = os.getenv("GROQ_API_KEY")
 if not groq_key:
     print("Warning: GROQ_API_KEY is not set in the environment/.env file.")
 
-def generate_llm_response(system_prompt, user_input, model_name="groq/compound-mini", temperature=0.0):
+def generate_llm_response(system_prompt, user_input, model_name="qwen/qwen3.6-27b", temperature=0.0):
     """
     Call Groq LLM using LangChain to generate a response.
     Measures generation latency and tracks token usage.
@@ -20,7 +20,6 @@ def generate_llm_response(system_prompt, user_input, model_name="groq/compound-m
     start_time = time.time()
     
     try:
-        # Initialize the LangChain ChatGroq client using the API key from .env
         llm = ChatGroq(
             model=model_name,
             temperature=temperature,
