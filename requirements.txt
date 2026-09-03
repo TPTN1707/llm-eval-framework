@@ -1,7 +1,7 @@
 deepeval
 ragas
 langchain
-langchain-openai
+langchain-groq
 psycopg2-binary
 python-dotenv
 streamlit
