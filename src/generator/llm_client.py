@@ -11,7 +11,7 @@ groq_key = os.getenv("GROQ_API_KEY")
 if not groq_key:
     print("Warning: GROQ_API_KEY is not set in the environment/.env file.")
 
-def generate_llm_response(system_prompt, user_input, model_name="llama-3.1-8b-instant", temperature=0.0):
+def generate_llm_response(system_prompt, user_input, model_name="groq/compound-mini", temperature=0.0):
     """
     Call Groq LLM using LangChain to generate a response.
     Measures generation latency and tracks token usage.
@@ -60,7 +60,6 @@ def generate_llm_response(system_prompt, user_input, model_name="llama-3.1-8b-in
             print(f"\n[Diagnostic] Model '{model_name}' failed. Listing your available Groq models:")
             try:
                 from groq import Groq
-                # Use the official Groq client to list models
                 client = Groq(api_key=groq_key)
                 models = client.models.list()
                 for m in models.data:
