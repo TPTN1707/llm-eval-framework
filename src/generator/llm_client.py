@@ -2,7 +2,7 @@ import sys
 import os
 import time
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq 
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
 load_dotenv()
@@ -10,7 +10,7 @@ load_dotenv()
 if not os.getenv("GROQ_API_KEY"):
     print("Warning: GROQ_API_KEY is not set in the environment/.env file.")
 
-def generate_llm_response(system_prompt, user_input, model_name="llama-3.3-70b-versatile", temperature=0.0):
+def generate_llm_response(system_prompt, user_input, model_name="llama-3.1-8b-instant", temperature=0.0):
     """
     Call Groq LLM using LangChain to generate a response.
     Measures generation latency and tracks token usage.
