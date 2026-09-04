@@ -14,7 +14,6 @@ def clean_json_output(text: str) -> str:
     Utility function to strip out <think> tags and markdown code blocks,
     returning only the raw, clean JSON string for DeepEval's parser.
     """
-    # Find the first '{' and the last '}' to isolate the JSON payload
     start_idx = text.find("{")
     end_idx = text.rfind("}")
     
@@ -40,13 +39,22 @@ class GroqEvaluator(DeepEvalBaseLLM):
         """Synchronously generate evaluation response and clean the JSON output"""
         chat_model = self.load_model()
         raw_output = chat_model.invoke(prompt).content
-        return clean_json_output(raw_output)
+        cleaned = clean_json_output(raw_output)
+        
+        print("\n=== [DEBUG] RAW LLM OUTPUT ===")
+        print(raw_output)
+        print("=== [DEBUG] CLEANED JSON OUTPUT ===")
+        print(cleaned)
+        print("===================================\n")
+        
+        return cleaned
 
     async def a_generate(self, prompt: str) -> str:
         """Asynchronously generate evaluation response and clean the JSON output"""
         chat_model = self.load_model()
         res = await chat_model.ainvoke(prompt)
-        return clean_json_output(res.content)
+        cleaned = clean_json_output(res.content)
+        return cleaned
 
     def get_model_name(self) -> str:
         return self.model_name
@@ -84,12 +92,13 @@ def evaluate_llm_output(input_text, actual_output, expected_output=None, context
         relevancy_score = relevancy_metric.score
         
         # Execute Faithfulness (Hallucination check) if context exists
-        faithfulness_score = 1.0 
+        faithfulness_score = 1.0 # Default perfect score if no context to hallucinate from
         if faithfulness_metric:
             print("Calculating Faithfulness (Hallucination check)...")
             faithfulness_metric.measure(test_case)
             faithfulness_score = faithfulness_metric.score
             
+        # Calculate overall pass status (e.g., passed if both metrics are >= 0.5)
         is_passed = relevancy_score >= 0.5 and faithfulness_score >= 0.5
         
         return {
