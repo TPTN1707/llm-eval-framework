@@ -11,14 +11,24 @@ load_dotenv()
 
 def clean_json_output(text: str) -> str:
     """
-    Utility function to strip out <think> tags and markdown code blocks,
-    returning only the raw, clean JSON string for DeepEval's parser.
+    Advanced brace-matching parser to extract only the first complete 
+    valid JSON object, discarding any leading/trailing reasoning thoughts.
     """
+    # Find the index of the first opening curly brace
     start_idx = text.find("{")
-    end_idx = text.rfind("}")
+    if start_idx == -1:
+        return text.strip()
     
-    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-        return text[start_idx:end_idx + 1].strip()
+    # Track matching braces to find the exact end of the JSON structure
+    brace_count = 0
+    for i in range(start_idx, len(text)):
+        if text[i] == "{":
+            brace_count += 1
+        elif text[i] == "}":
+            brace_count -= 1
+            if brace_count == 0:
+                return text[start_idx:i+1].strip()
+                
     return text.strip()
 
 
@@ -41,6 +51,7 @@ class GroqEvaluator(DeepEvalBaseLLM):
         raw_output = chat_model.invoke(prompt).content
         cleaned = clean_json_output(raw_output)
         
+        # DEBUG prints to inspect what the LLM is actually generating
         print("\n=== [DEBUG] RAW LLM OUTPUT ===")
         print(raw_output)
         print("=== [DEBUG] CLEANED JSON OUTPUT ===")
@@ -68,7 +79,6 @@ def evaluate_llm_output(input_text, actual_output, expected_output=None, context
     try:
         evaluator_model = GroqEvaluator()
         
-        # Define the test case using DeepEval structure
         retrieval_context = [context] if context else None
         
         test_case = LLMTestCase(
