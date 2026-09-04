@@ -2,15 +2,15 @@ import os
 import sys
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from deepeval.models.base_model import DeepEvalBaseModel
+from deepeval.models.base_model import DeepEvalBaseLLM
 from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric
 from deepeval.test_case import LLMTestCase
 
 
 load_dotenv()
 
-# 1. Custom LLM Wrapper to force DeepEval to use our free Groq model as the evaluator
-class GroqEvaluator(DeepEvalBaseModel):
+# 1. Custom LLM Wrapper inheriting from the correct DeepEvalBaseLLM class
+class GroqEvaluator(DeepEvalBaseLLM):
     def __init__(self, model_name="qwen/qwen3.6-27b"):
         self.model_name = model_name
         self.chat_model = ChatGroq(
@@ -22,17 +22,13 @@ class GroqEvaluator(DeepEvalBaseModel):
     def load_model(self):
         return self.chat_model
 
-    def _call(self, prompt: str) -> str:
-        """Synchronously generate evaluation response (Required by newer DeepEval versions)"""
+    def generate(self, prompt: str) -> str:
+        """Synchronously generate evaluation response (Required by DeepEvalBaseLLM)"""
         chat_model = self.load_model()
         return chat_model.invoke(prompt).content
 
-    def generate(self, prompt: str) -> str:
-        """Synchronously generate evaluation response (Required by older DeepEval versions)"""
-        return self._call(prompt)
-
     async def a_generate(self, prompt: str) -> str:
-        """Asynchronously generate evaluation response"""
+        """Asynchronously generate evaluation response (Required by DeepEvalBaseLLM)"""
         chat_model = self.load_model()
         res = await chat_model.ainvoke(prompt)
         return res.content
@@ -47,10 +43,8 @@ def evaluate_llm_output(input_text, actual_output, expected_output=None, context
     Returns calculated scores for Relevancy and Faithfulness.
     """
     try:
-        # Initialize our custom Groq evaluator
         evaluator_model = GroqEvaluator()
         
-        # Define the test case using DeepEval structure
         retrieval_context = [context] if context else None
         
         test_case = LLMTestCase(
