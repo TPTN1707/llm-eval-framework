@@ -1,13 +1,27 @@
 import os
 import sys
+import re
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from deepeval.models.base_model import DeepEvalBaseLLM
 from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric
 from deepeval.test_case import LLMTestCase
 
-
 load_dotenv()
+
+def clean_json_output(text: str) -> str:
+    """
+    Utility function to strip out <think> tags and markdown code blocks,
+    returning only the raw, clean JSON string for DeepEval's parser.
+    """
+    # Find the first '{' and the last '}' to isolate the JSON payload
+    start_idx = text.find("{")
+    end_idx = text.rfind("}")
+    
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        return text[start_idx:end_idx + 1].strip()
+    return text.strip()
+
 
 # 1. Custom LLM Wrapper inheriting from the correct DeepEvalBaseLLM class
 class GroqEvaluator(DeepEvalBaseLLM):
@@ -23,15 +37,16 @@ class GroqEvaluator(DeepEvalBaseLLM):
         return self.chat_model
 
     def generate(self, prompt: str) -> str:
-        """Synchronously generate evaluation response (Required by DeepEvalBaseLLM)"""
+        """Synchronously generate evaluation response and clean the JSON output"""
         chat_model = self.load_model()
-        return chat_model.invoke(prompt).content
+        raw_output = chat_model.invoke(prompt).content
+        return clean_json_output(raw_output)
 
     async def a_generate(self, prompt: str) -> str:
-        """Asynchronously generate evaluation response (Required by DeepEvalBaseLLM)"""
+        """Asynchronously generate evaluation response and clean the JSON output"""
         chat_model = self.load_model()
         res = await chat_model.ainvoke(prompt)
-        return res.content
+        return clean_json_output(res.content)
 
     def get_model_name(self) -> str:
         return self.model_name
@@ -45,6 +60,7 @@ def evaluate_llm_output(input_text, actual_output, expected_output=None, context
     try:
         evaluator_model = GroqEvaluator()
         
+        # Define the test case using DeepEval structure
         retrieval_context = [context] if context else None
         
         test_case = LLMTestCase(
@@ -68,13 +84,12 @@ def evaluate_llm_output(input_text, actual_output, expected_output=None, context
         relevancy_score = relevancy_metric.score
         
         # Execute Faithfulness (Hallucination check) if context exists
-        faithfulness_score = 1.0 # Default perfect score if no context to hallucinate from
+        faithfulness_score = 1.0 
         if faithfulness_metric:
             print("Calculating Faithfulness (Hallucination check)...")
             faithfulness_metric.measure(test_case)
             faithfulness_score = faithfulness_metric.score
             
-        # Calculate overall pass status (e.g., passed if both metrics are >= 0.5)
         is_passed = relevancy_score >= 0.5 and faithfulness_score >= 0.5
         
         return {
