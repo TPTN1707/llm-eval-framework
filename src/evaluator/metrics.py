@@ -14,15 +14,12 @@ def clean_json_output(text: str) -> str:
     Advanced regex and brace-matching parser. 
     Strips the <think>...</think> block first, then extracts the exact valid JSON payload.
     """
-    # 1. Strip out the entire <think>...</think> block using regex
     text_clean = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     
-    # 2. Find the index of the first opening curly brace
     start_idx = text_clean.find("{")
     if start_idx == -1:
         return text_clean.strip()
     
-    # 3. Match opening and closing braces
     brace_count = 0
     for i in range(start_idx, len(text_clean)):
         if text_clean[i] == "{":
@@ -35,10 +32,9 @@ def clean_json_output(text: str) -> str:
     return text_clean.strip()
 
 
-# 1. Custom LLM Wrapper using the standard English model
-# Changed default model_name to 'canopylabs/orpheus-v1-english' to prevent 429 token limits
+# 1. Custom LLM Wrapper using the standard OpenAI GPT-OSS-20B model on Groq
 class GroqEvaluator(DeepEvalBaseLLM):
-    def __init__(self, model_name="canopylabs/orpheus-v1-english"):
+    def __init__(self, model_name="openai/gpt-oss-20b"):
         self.model_name = model_name
         self.chat_model = ChatGroq(
             model=self.model_name,
