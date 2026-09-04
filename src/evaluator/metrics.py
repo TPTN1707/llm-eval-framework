@@ -13,20 +13,23 @@ load_dotenv()
 class GroqEvaluator(DeepEvalBaseModel):
     def __init__(self, model_name="qwen/qwen3.6-27b"):
         self.model_name = model_name
-        # Initialize the LangChain ChatGroq client
         self.chat_model = ChatGroq(
             model=self.model_name,
-            temperature=0.0, # Temperature 0 is ideal for strict evaluation logic
+            temperature=0.0, 
             api_key=os.getenv("GROQ_API_KEY")
         )
 
     def load_model(self):
         return self.chat_model
 
-    def generate(self, prompt: str) -> str:
-        """Synchronously generate evaluation response"""
+    def _call(self, prompt: str) -> str:
+        """Synchronously generate evaluation response (Required by newer DeepEval versions)"""
         chat_model = self.load_model()
         return chat_model.invoke(prompt).content
+
+    def generate(self, prompt: str) -> str:
+        """Synchronously generate evaluation response (Required by older DeepEval versions)"""
+        return self._call(prompt)
 
     async def a_generate(self, prompt: str) -> str:
         """Asynchronously generate evaluation response"""
@@ -34,7 +37,7 @@ class GroqEvaluator(DeepEvalBaseModel):
         res = await chat_model.ainvoke(prompt)
         return res.content
 
-    def get_model_name(self):
+    def get_model_name(self) -> str:
         return self.model_name
 
 
