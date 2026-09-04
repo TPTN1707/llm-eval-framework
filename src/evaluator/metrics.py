@@ -1,6 +1,6 @@
 import os
 import sys
-import re
+import re 
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from deepeval.models.base_model import DeepEvalBaseLLM
@@ -11,25 +11,29 @@ load_dotenv()
 
 def clean_json_output(text: str) -> str:
     """
-    Advanced brace-matching parser to extract only the first complete 
-    valid JSON object, discarding any leading/trailing reasoning thoughts.
+    Advanced regex and brace-matching parser. 
+    Strips the <think>...</think> block first, then extracts the exact valid JSON payload.
     """
-    # Find the index of the first opening curly brace
-    start_idx = text.find("{")
-    if start_idx == -1:
-        return text.strip()
+    # 1. Strip out the entire <think>...</think> block using regex to avoid processing draft thoughts
+    # re.DOTALL ensures that dot (.) matches newlines within the thinking block
+    text_clean = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     
-    # Track matching braces to find the exact end of the JSON structure
+    # 2. Find the index of the first opening curly brace in the remaining clean text
+    start_idx = text_clean.find("{")
+    if start_idx == -1:
+        return text_clean.strip()
+    
+    # 3. Match opening and closing braces to find the exact end of the JSON structure
     brace_count = 0
-    for i in range(start_idx, len(text)):
-        if text[i] == "{":
+    for i in range(start_idx, len(text_clean)):
+        if text_clean[i] == "{":
             brace_count += 1
-        elif text[i] == "}":
+        elif text_clean[i] == "}":
             brace_count -= 1
             if brace_count == 0:
-                return text[start_idx:i+1].strip()
+                return text_clean[start_idx:i+1].strip()
                 
-    return text.strip()
+    return text_clean.strip()
 
 
 # 1. Custom LLM Wrapper inheriting from the correct DeepEvalBaseLLM class
@@ -51,7 +55,6 @@ class GroqEvaluator(DeepEvalBaseLLM):
         raw_output = chat_model.invoke(prompt).content
         cleaned = clean_json_output(raw_output)
         
-        # DEBUG prints to inspect what the LLM is actually generating
         print("\n=== [DEBUG] RAW LLM OUTPUT ===")
         print(raw_output)
         print("=== [DEBUG] CLEANED JSON OUTPUT ===")
@@ -63,7 +66,7 @@ class GroqEvaluator(DeepEvalBaseLLM):
     async def a_generate(self, prompt: str) -> str:
         """Asynchronously generate evaluation response and clean the JSON output"""
         chat_model = self.load_model()
-        res = await chat_model.ainvoke(prompt)
+        res = await chat_model.ainvoke(res.content)
         cleaned = clean_json_output(res.content)
         return cleaned
 
@@ -79,6 +82,7 @@ def evaluate_llm_output(input_text, actual_output, expected_output=None, context
     try:
         evaluator_model = GroqEvaluator()
         
+        # Define the test case using DeepEval structure
         retrieval_context = [context] if context else None
         
         test_case = LLMTestCase(
