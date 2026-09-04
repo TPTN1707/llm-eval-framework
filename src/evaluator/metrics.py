@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from deepeval.models.base_model import DeepEvalBaseModel
 from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric
-from dedeepeval.test_case import LLMTestCase
+from deepeval.test_case import LLMTestCase
 
-# Load environment variables
+
 load_dotenv()
 
 # 1. Custom LLM Wrapper to force DeepEval to use our free Groq model as the evaluator
@@ -48,7 +48,6 @@ def evaluate_llm_output(input_text, actual_output, expected_output=None, context
         evaluator_model = GroqEvaluator()
         
         # Define the test case using DeepEval structure
-        # If context is provided, wrap it in a list as required by DeepEval
         retrieval_context = [context] if context else None
         
         test_case = LLMTestCase(
@@ -71,7 +70,7 @@ def evaluate_llm_output(input_text, actual_output, expected_output=None, context
         relevancy_metric.measure(test_case)
         relevancy_score = relevancy_metric.score
         
-        # Execute Faithfulness (Hallucination) evaluation if context exists
+        # Execute Faithfulness (Hallucination check) if context exists
         faithfulness_score = 1.0 # Default perfect score if no context to hallucinate from
         if faithfulness_metric:
             print("Calculating Faithfulness (Hallucination check)...")
