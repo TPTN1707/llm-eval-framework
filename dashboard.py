@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from src.database.connection import get_db_connection
+from src.database.connection import DATABASE_URL
 
 # Page configuration
 st.set_page_config(
@@ -18,25 +18,19 @@ st.write("Analyze, monitor, and compare LLM prompt performance and hallucination
 st.write("---")
 
 def load_evaluation_runs():
-    """Fetch all completed evaluation runs from PostgreSQL"""
-    conn = None
+    """Fetch all completed evaluation runs from PostgreSQL using connection string to avoid Pandas warnings"""
     try:
-        conn = get_db_connection()
         query = "SELECT id, run_name, model_name, created_at FROM evaluation_runs ORDER BY created_at DESC;"
-        df = pd.read_sql(query, conn)
+        # Pass the DATABASE_URL connection string directly to silence DBAPI2 warnings
+        df = pd.read_sql(query, DATABASE_URL)
         return df
     except Exception as e:
         st.error(f"Error loading evaluation runs: {str(e)}")
         return pd.DataFrame()
-    finally:
-        if conn:
-            conn.close()
 
 def load_evaluation_results(run_id):
-    """Fetch detailed evaluation results for a specific run ID"""
-    conn = None
+    """Fetch detailed evaluation results for a specific run ID using connection string"""
     try:
-        conn = get_db_connection()
         query = f"""
         SELECT 
             r.id as result_id,
@@ -54,14 +48,12 @@ def load_evaluation_results(run_id):
         WHERE r.run_id = {run_id}
         ORDER BY r.id ASC;
         """
-        df = pd.read_sql(query, conn)
+        # Pass the DATABASE_URL connection string directly to silence DBAPI2 warnings
+        df = pd.read_sql(query, DATABASE_URL)
         return df
     except Exception as e:
         st.error(f"Error loading evaluation results: {str(e)}")
         return pd.DataFrame()
-    finally:
-        if conn:
-            conn.close()
 
 # Load all available runs
 runs_df = load_evaluation_runs()
@@ -126,11 +118,8 @@ else:
         )
         st.write("---")
         
-        # Display Detailed Results Table
         st.markdown("### 📋 Detailed Test Case Results")
-        # Format columns for display
         display_df = results_df.copy()
-        # Clean boolean displays
         display_df["Passed"] = display_df["Passed"].apply(lambda x: "✅ PASS" if x else "❌ FAIL")
         
         st.dataframe(
@@ -138,7 +127,7 @@ else:
                 "Question", "Ground Truth", "LLM Output", 
                 "Latency (s)", "Tokens", "Relevancy", "Faithfulness", "Passed"
             ]],
-            use_container_width=True
+            width='stretch'
         )
         
     else:
