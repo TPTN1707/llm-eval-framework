@@ -1,36 +1,62 @@
 # LLM Evaluation & Benchmarking Framework 📊🧪
 
-A production-grade, fully automated LLM Evaluation and Benchmarking Framework designed to quantitatively measure and monitor large language model outputs. 
+An automated, production-grade evaluation and benchmarking framework designed to quantitatively measure and monitor Large Language Model (LLM) outputs. 
 
-Unlike simple API-calling tools, this framework serves as a robust test harness that evaluates LLM responses for **Answer Relevancy**, **Faithfulness**, and **Hallucination Rates** using state-of-the-art evaluation metrics, storing all structured run metadata and metrics in a cloud **PostgreSQL** database, and visualizing results on an interactive web **Streamlit Dashboard**.
+Most developers only know how to build basic LLM applications, but this repository serves as a robust **test harness** that scores model performance for **Answer Relevancy**, **Faithfulness**, and **Hallucination Rates**. It stores all structured run metadata, latencies, token counts, and metrics in a cloud **PostgreSQL** database, and visualizes them on an interactive web **Streamlit Dashboard**.
 
-To eliminate operational costs, the entire pipeline is configured to run on free-tier, high-speed **Groq Cloud API** models.
+To eliminate operational costs, the entire framework is configured to run on free-tier, high-speed **Groq Cloud API** models.
+
+---
+
+## 🏫 The Architecture Analogy: "The Automated Grading System"
+
+To easily understand how the different modules of this framework interact, we can think of it as an **Automated School Exam System**:
+
+    [Test Case DB (Exam Paper)] 
+                 │
+                 ▼ (input query)
+     [LLM under Test (Student)] ───────► (calculates latency & tokens)
+                 │
+                 ▼ (actual answer)
+    [DeepEval Metrics (Teacher)] ◄───── [Reference Context (Textbook)]
+                 │
+                 ▼ (evaluates Relevancy & Faithfulness)
+     [PostgreSQL (Grade Book)]
+                 │
+                 ▼ (persists logs & scores)
+      [Streamlit Dashboard]
+
+- **The Exam Paper (`test_cases` table):** This is the gold benchmark dataset. It contains the testing questions (`input_text`), correct reference answers (`expected_output`), and the source textbooks (`context`).
+- **The Student under Test (`llm_client.py`):** This is the target LLM being benchmarked (configured with the reasoning model `qwen/qwen3.6-27b`). It reads the questions and writes its responses while we track how fast the student answered (`latency_seconds`) and how many resources they consumed (`tokens_used`).
+- **The Grading Teacher (`metrics.py`):** This is the custom `openai/gpt-oss-20b` evaluator model wrapped inside Confident-AI's **DeepEval** framework. The teacher grades the student's work on two strict criteria:
+  - *Answer Relevancy (Score 0.0 - 1.0):* Did the student answer the question directly, or did they write redundant, wordy information?
+  - *Faithfulness / Hallucination Check (Score 0.0 - 1.0):* Did the student copy truthfully from the provided context (textbook), or did they make up facts (hallucinate)?
+- **The Grade Book (PostgreSQL Cloud):** Saves all the student's answers, latencies, and grades permanently in the cloud.
+- **The Report Card (`dashboard.py`):** The final visual dashboard where you can view average scores, pass rates, and performance trends of different test runs.
 
 ---
 
 ## 🚀 Key Features
 
-- **Golden Dataset Management (PostgreSQL):** Stores reference questions, ground truth answers, and retrieval contexts in a cloud-hosted relational database.
-- **Dynamic Response Generation (`src/generator/llm_client.py`):** Automatically invokes the target model under test (`qwen/qwen3.6-27b` reasoning model) via LangChain, tracking generation latency and token usage.
-- **Custom LLM Evaluator (`src/evaluator/metrics.py`):** Forces Confident-AI's **DeepEval** framework to use a highly cost-effective, non-reasoning Groq model (`openai/gpt-oss-20b`) as the evaluation judge, eliminating 100% of OpenAI API costs.
-- **Robust Thought-Stripping JSON Parser:** Features a custom brace-matching and regex-based parser that strips out model reasoning thoughts (`<think>...</think>`) and trailing conversational noise, delivering clean, parseable JSON payloads directly to DeepEval's internal validators.
-- **Analytical Streamlit Dashboard (`dashboard.py`):** An elegant, single-page web interface providing metrics cards (Average Relevancy, Average Faithfulness, Average Latency, Pass Rate) and interactive detailed dataframes to analyze prompt engineering experiments.
+- **100% Free-Tier Operation:** Orchestrated entirely on Groq's LPU hardware, avoiding expensive OpenAI API usage while maintaining production-grade evaluation capabilities.
+- **Dynamic Response Generation:** Integrates LangChain with advanced reasoning models to capture step-by-step thinking processes, complete with latency tracking and token consumption.
+- **Robust JSON thought-stripping parser:** Features a custom brace-matching and regex-based parser that strips out model reasoning thoughts (`<think>...</think>`) and trailing conversational noise, delivering clean, parseable JSON payloads directly to DeepEval's internal validators.
+- **Visual Performance Dashboard:** A streamlined Streamlit app with clean summary cards, detailed interactive tables, and automatic future-proof container widths.
 
 ---
 
 ## 📁 Project Directory Structure
 
     llm-eval-framework/
-    ├── .env                         # API keys and Database URL (git-ignored)
+    ├── .env                         # Database URL and API keys (git-ignored)
     ├── .gitignore                   # Standard Git exclusion file
-    ├── requirements.txt             # Project dependencies
-    ├── uv.lock                      # Locked dependency versions (managed by uv)
+    ├── requirements.txt             # Project python dependencies
+    ├── uv.lock                      # Locked dependency versions
     ├── main.py                      # Central pipeline orchestrator (Test Harness)
     ├── dashboard.py                 # Streamlit visualization dashboard
     │
     └── src/                         # Source directory
         ├── __init__.py
-        ├── config.py                # Centralized configuration loader
         │
         ├── database/                # Database management module
         │   ├── __init__.py
@@ -45,6 +71,8 @@ To eliminate operational costs, the entire pipeline is configured to run on free
         └── evaluator/               # LLM Evaluation module
             ├── __init__.py
             └── metrics.py           # Custom DeepEval LLM evaluator and metrics
+
+---
 
 ## 🛠️ Tech Stack & Architecture
 
@@ -68,7 +96,7 @@ You only need a single free API key and a database connection string:
 
 ### Installation
 
-This project manages packages using Astral's fast Python package installer, `uv`.
+This project manages packages using `uv`.
 
 1. Navigate to your project directory:
 
